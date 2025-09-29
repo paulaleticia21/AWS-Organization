@@ -1,4 +1,4 @@
-module "pipeline_dev" {
+module "pipeline_hom" {
   source             = "../modules/organization"
   name               = "aws-organization"
   environment        = "hom"
