@@ -1,0 +1,50 @@
+name: Deploy AWS Organization
+
+on:
+  push:
+    branches:
+      - main
+      - release
+      - develop
+  workflow_dispatch:
+
+env:
+  TF_VERSION: 1.9.5
+  AWS_REGION: sa-east-1
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        environment: [dev, hom, prod]
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Instalar Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Configurar credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Inicializar Terraform
+        run: terraform init -backend-config="key=organization/${{ matrix.environment }}/terraform.tfstate"
+
+      - name: Validar Terraform
+        run: terraform validate
+
+      - name: Plan Terraform
+        run: terraform plan -var-file=envs/${{ matrix.environment }}.tfvars -out=tfplan
+
+      - name: Apply Terraform
+        if: github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve tfplan
